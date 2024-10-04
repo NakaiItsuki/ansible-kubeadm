@@ -1,0 +1,44 @@
+---
+- name: Initialize Kubernetes master node
+  shell: >
+    kubeadm init
+    --kubernetes-version 1.30.2
+    --pod-network-cidr=10.244.0.0/16
+    --control-plane-endpoint={{ control_plane_endpoint_ip }}
+    --cri-socket=unix:///var/run/cri-dockerd.sock
+    --upload-certs > /tmp/kubeadm_init.txt
+
+- name: Execute grep and sed to extract kubeadm join command
+  shell: awk '/kubeadm join/ {count++} count==2 {print; getline; print}' /tmp/kubeadm_init.txt | sed 's/^ *//; s/\\$//' > /tmp/tmp_join.sh
+
+- name: Remove newlines from tmp_join.sh and save to /tmp/kubeadm_join.sh
+  shell: tr '\n' ' ' < /tmp/tmp_join.sh > /tmp/kubeadm_join.sh
+
+- name: Add cri-socket to kubeadm join command
+  shell: sed -i '$ s/$/ --cri-socket=unix:\/\/\/var\/run\/cri-dockerd.sock/' /tmp/kubeadm_join.sh
+
+- name: Copy kubeadm join script from master node to local machine
+  fetch:
+    src: /tmp/kubeadm_join.sh
+    dest: /tmp/ansible/
+    flat: yes
+
+- name: Create .kube directory
+  file:
+    path: "{{ ansible_env.HOME }}/.kube"
+    state: directory
+
+- name: Copy admin.conf to kube config
+  command: cp -f /etc/kubernetes/admin.conf {{ ansible_env.HOME }}/.kube/config
+  become: true
+
+- name: Change ownership of kube config
+  command: sudo chown {{ ansible_user_id }}:{{ ansible_user_gid }} $HOME/.kube/config
+
+- name: Apply Flannel network configuration
+  command: kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+  register: flannel_result
+
+- name: Check result of Flannel deployment
+  debug:
+    var: flannel_result

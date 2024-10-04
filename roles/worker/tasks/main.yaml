@@ -1,0 +1,22 @@
+---
+# - name: Fetch kubeadm join script from master node
+#   fetch:
+#     src: /tmp/kubeadm_join.sh
+#     dest: /tmp/kubeadm_join.sh
+#   delegate_to: master-node
+
+- name: Copy kubeadm join script to worker node
+  copy:
+    src: /tmp/ansible/kubeadm_join.sh 
+    dest: /tmp/kubeadm_join.sh
+
+- name: Ensure kubeadm join script is executable
+  file:
+    path: /tmp/kubeadm_join.sh
+    mode: '0755'
+
+# - name: fix kubeadm join script
+#   shell: sed -i '/--cri-socket/{N;s/\n/ /;}' /tmp/kubeadm_join.sh
+
+- name: Execute kubeadm join on worker node
+  shell: /tmp/kubeadm_join.sh

@@ -1,0 +1,75 @@
+---
+
+- name: Add Golang backports PPA
+  apt_repository:
+    repo: ppa:longsleep/golang-backports
+    state: present
+    update_cache: yes
+
+- name: Install Go, make, and gcc
+  apt:
+    name:
+      - golang-go
+      - make
+      - gcc
+    state: present
+    update_cache: yes
+
+- name: Clone cri-dockerd repository
+  git:
+    repo: "https://github.com/Mirantis/cri-dockerd.git"
+    dest: /tmp/cri-dockerd
+    version: master
+
+- name: Change directory to cri-dockerd and build cri-dockerd
+  command: make cri-dockerd
+  args:
+    chdir: /tmp/cri-dockerd
+
+- name: Create /usr/local/bin directory if it doesn't exist
+  file:
+    path: /usr/local/bin
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Install cri-dockerd to /usr/local/bin
+  copy:
+    src: /tmp/cri-dockerd/cri-dockerd
+    dest: /usr/local/bin/cri-dockerd
+    owner: root
+    group: root
+    mode: '0755'
+    remote_src: yes
+
+- name: Install systemd service files for cri-dockerd
+  copy:
+    src: /tmp/cri-dockerd/packaging/systemd/
+    dest: /etc/systemd/system/
+    owner: root
+    group: root
+    mode: '0644'
+    remote_src: yes
+
+- name: Update ExecStart path in cri-docker.service
+  replace:
+    path: /etc/systemd/system/cri-docker.service
+    regexp: '^(ExecStart=).*'
+    replace: '\1/usr/local/bin/cri-dockerd'
+
+- name: Reload systemd to apply changes
+  command: systemctl daemon-reload
+
+- name: Enable and start cri-docker.socket
+  systemd:
+    name: cri-docker.socket
+    enabled: true
+    state: started
+
+- name: Start cri-dockerd service
+  systemd:
+    name: cri-docker
+    state: started
+    enabled: true
+  become: true
