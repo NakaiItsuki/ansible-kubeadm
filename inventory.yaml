@@ -4,23 +4,23 @@ all:
     cluster_network: "192.168.0.0/24"
   hosts:
     master-node:
-      ansible_host: 59.106.222.65  # マスターノードのIPアドレス
+      ansible_host: 192.168.0.2  # マスターノードのIPアドレス
       ansible_user: ubuntu         # SSH接続に使うユーザー名
       ansible_ssh_private_key_file: ~/.ssh/id_rsa
       ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
     master-node-2:
-      ansible_host: 59.106.219.65  # マスターノードのIPアドレス
+      ansible_host: 192.168.0.3  # マスターノードのIPアドレス
       ansible_user: ubuntu         # SSH接続に使うユーザー名
       ansible_ssh_private_key_file: ~/.ssh/id_rsa
       ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
       control_plane_endpoint_ip: "192.168.0.2"
     worker-node-1:
-      ansible_host: 153.125.225.244  # ワーカーノード1のIPアドレス
+      ansible_host: 192.168.0.4  # ワーカーノード1のIPアドレス
       ansible_user: ubuntu
       ansible_ssh_private_key_file: ~/.ssh/id_rsa
       ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
     worker-node-2:
-      ansible_host: 163.43.108.5  # ワーカーノード2のIPアドレス
+      ansible_host: 192.168.0.5  # ワーカーノード2のIPアドレス
       ansible_user: ubuntu
       ansible_ssh_private_key_file: ~/.ssh/id_rsa
       ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
