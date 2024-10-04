@@ -24,6 +24,12 @@
   roles:
   - { role: master, tags: master }
 
+- name: Deploy additional master for kubeadm
+  hosts: k8s-additional-masters
+  become: true
+  roles:
+  - { role: additional-master, tags: additional-master }
+
 - name: Deploy workers for kubeadm
   hosts: k8s-workers
   become: true

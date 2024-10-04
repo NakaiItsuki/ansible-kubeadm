@@ -1,4 +1,24 @@
 ---
+- name: Install dependencies
+  apt:
+    name:
+      - nfs-kernel-server
+    state: present
+
+- name: Ensure /export/nfs/ directory exists
+  ansible.builtin.file:
+    path: /export/nfs/
+    state: directory
+    mode: '0755'
+
+- name: Ensure /export/nfs/ <cluster network>(rw,sync,no_subtree_check,no_root_squash) is correctly written in /etc/exports
+  ansible.builtin.lineinfile:
+    path: /etc/exports
+    line: "/export/nfs {{ cluster_network }}(rw,sync,no_subtree_check,no_root_squash)"
+    regexp: '^/export/nfs'
+    state: present
+    insertafter: EOF
+
 - name: Initialize Kubernetes master node
   shell: >
     kubeadm init
@@ -8,18 +28,33 @@
     --cri-socket=unix:///var/run/cri-dockerd.sock
     --upload-certs > /tmp/kubeadm_init.txt
 
-- name: Execute grep and sed to extract kubeadm join command
-  shell: awk '/kubeadm join/ {count++} count==2 {print; getline; print}' /tmp/kubeadm_init.txt | sed 's/^ *//; s/\\$//' > /tmp/tmp_join.sh
+- name: Execute grep and sed to extract kubeadm worker join command
+  shell: awk '/kubeadm join/ {count++} count==2 {print; getline; print}' /tmp/kubeadm_init.txt | sed 's/^ *//; s/\\$//' > /tmp/tmp_worker_join.sh
 
-- name: Remove newlines from tmp_join.sh and save to /tmp/kubeadm_join.sh
-  shell: tr '\n' ' ' < /tmp/tmp_join.sh > /tmp/kubeadm_join.sh
+- name: Execute grep and sed to extract kubeadm worker join command
+  shell: awk '/kubeadm join/ {count++} count==1 {print; getline; print}' /tmp/kubeadm_init.txt | sed 's/^ *//; s/\\$//' > /tmp/tmp_master_join.sh
 
-- name: Add cri-socket to kubeadm join command
-  shell: sed -i '$ s/$/ --cri-socket=unix:\/\/\/var\/run\/cri-dockerd.sock/' /tmp/kubeadm_join.sh
+- name: Remove newlines from tmp_worker_join.sh and save to /tmp/kubeadm_worker_join.sh
+  shell: tr '\n' ' ' < /tmp/tmp_worker_join.sh > /tmp/kubeadm_worker_join.sh
 
-- name: Copy kubeadm join script from master node to local machine
+- name: Remove newlines from tmp_join.sh and save to /tmp/kubeadm_master_join.sh
+  shell: grep -A 2 'kubeadm join' /tmp/tmp_master_join.sh | tr -d '\n' > /tmp/kubeadm_master_join.sh
+
+- name: Add cri-socket to kubeadm worker join command
+  shell: sed -i '$ s/$/ --cri-socket=unix:\/\/\/var\/run\/cri-dockerd.sock/' /tmp/kubeadm_worker_join.sh
+
+- name: Add cri-socket to kubeadm master join command
+  shell: sed -i '$ s/$/ --cri-socket=unix:\/\/\/var\/run\/cri-dockerd.sock/' /tmp/kubeadm_master_join.sh
+
+- name: Copy kubeadm worker join script from master node to local machine
   fetch:
-    src: /tmp/kubeadm_join.sh
+    src: /tmp/kubeadm_worker_join.sh
+    dest: /tmp/ansible/
+    flat: yes
+
+- name: Copy kubeadm master join script from master node to local machine
+  fetch:
+    src: /tmp/kubeadm_master_join.sh
     dest: /tmp/ansible/
     flat: yes
 
@@ -42,3 +77,19 @@
 - name: Check result of Flannel deployment
   debug:
     var: flannel_result
+
+- name: Download and execute the Helm installation script
+  shell: |
+    curl -sSL https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
+  args:
+    executable: /bin/bash
+
+- name: Add Helm repo for nfs-subdir-external-provisioner
+  command: helm repo add nfs-subdir-external-provisioner https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner/
+
+- name: Update Helm repo
+  command: helm repo update
+
+- name: Install nfs-subdir-external-provisioner
+  command: helm install nfs-subdir-external-provisioner nfs-subdir-external-provisioner/nfs-subdir-external-provisioner --set nfs.server={{ control_plane_endpoint_ip }} --set nfs.path=/export/nfs/
+

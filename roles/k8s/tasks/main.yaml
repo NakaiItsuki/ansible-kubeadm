@@ -1,5 +1,4 @@
 ---
-
 - name: Update APT cache
   apt:
     update_cache: yes
@@ -11,6 +10,8 @@
       - ca-certificates
       - curl
       - socat
+      - autofs
+      - nfs-common
     state: present
 
 - name: Ensure directory for apt keyrings exists

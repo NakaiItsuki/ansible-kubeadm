@@ -1,5 +1,4 @@
 ---
-
 - name: Add Golang backports PPA
   apt_repository:
     repo: ppa:longsleep/golang-backports
