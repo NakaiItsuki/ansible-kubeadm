@@ -3,7 +3,11 @@
 ## 構成例
 以下の構成図の環境での実行を想定しています。ただし、`inventory.yaml`を編集することで、他の環境でも実行可能です。
 ![sample-cluster](sample-cluster.png)
-## 前準備
+## 仕様
+- CNI (Container Network Interface): Flannel
+- CSI (Container Storage Interface): cluster.local/nfs-subdir-external-provisioner
+- CRI (Container Runtime Interface): cri-dockerd
+## 前提条件
 Ansibleのコードを実行する前に、以下の作業を行う必要があります。
 - 各VM（or 物理マシン）の作成
 - Ubuntuのインストール
