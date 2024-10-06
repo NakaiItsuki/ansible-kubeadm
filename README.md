@@ -11,6 +11,8 @@ Ansibleのコードを実行する前に、以下の作業を行う必要があ�
 - Ansibleの実行環境の準備
 ## 使用方法
 1. inventory.yamlを編集し、ターゲット環境に合わせて構成を設定します。
+   - `ansible_host`のIPアドレスを環境に合わせる。
+   - `ansible_ssh_private_key_file`を自分の秘密鍵のパスに変更する。 etc.
 2. Ansibleプレイブックを実行して、Kubernetesクラスタを自動的に構築します。
 ```
 ansible-playbook -i inventory.yaml -bk deploy.yaml
