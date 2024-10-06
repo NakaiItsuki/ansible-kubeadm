@@ -9,7 +9,9 @@ Ansibleのコードを実行する前に、以下の作業を行う必要があ�
 - Ubuntuのインストール
 - SSH公開鍵認証の設定
 - Ansibleの実行環境の準備
-## 実行
+## 使用方法
+1. inventory.yamlを編集し、ターゲット環境に合わせて構成を設定します。
+2. Ansibleプレイブックを実行して、Kubernetesクラスタを自動的に構築します。
 ```
 ansible-playbook -i inventory.yaml -bk deploy.yaml
 ```
