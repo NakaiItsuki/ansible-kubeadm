@@ -1,6 +1,7 @@
-# ansible-kubeadm
+# Ansible + Kubeadm: Kubernetes Cluster Automation
+このリポジトリでは、Ansibleを使用してkubeadmを用いたKubernetesクラスタの作成を自動で実行できるコードを提供しています。
 ## 構成例
-以下の構成図の環境で実行することを想定しています。
+以下の構成図の環境での実行を想定しています。ただし、`inventory.yaml`を編集することで、他の環境でも実行可能です。
 ![sample-cluster](sample-cluster.png)
 ## 前準備
 Ansibleのコードを実行する前に、以下の作業を行う必要があります。
