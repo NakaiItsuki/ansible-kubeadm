@@ -19,6 +19,9 @@
     state: present
     insertafter: EOF
 
+- name: reload nfs setting
+  shell: exportfs -ra
+
 - name: Initialize Kubernetes master node
   shell: >
     kubeadm init
