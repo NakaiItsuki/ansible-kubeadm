@@ -4,8 +4,8 @@
 以下の構成図の環境での実行を想定しています。ただし、`inventory.yaml`を編集することで、他の環境でも実行可能です。
 ![sample-cluster](sample-cluster.png)
 ## 仕様
-- CNI (Container Network Interface): Flannel
-- CSI (Container Storage Interface): cluster.local/nfs-subdir-external-provisioner
+- CNI (Container Network Interface): `k8s_cni_plugin` 変数で指定 (デフォルト: `flannel`)
+- CSI (Container Storage Interface): `k8s_csi_plugin` 変数で指定 (デフォルト: `nfs`)
 - CRI (Container Runtime Interface): cri-dockerd
 ## 前提条件
 Ansibleのコードを実行する前に、以下の作業を行う必要があります。
@@ -23,6 +23,8 @@ all:
   vars:
     control_plane_endpoint_ip: "192.168.0.2"
     cluster_network: "192.168.0.0/24"
+    k8s_cni_plugin: "flannel" # cni plugin. "flannel" or "calico"
+    k8s_csi_plugin: "nfs" # Set to "nfs" to enable NFS CSI, or set to "none" (or comment out) to disable.
   hosts:
     master-node:
       ansible_host: 192.168.0.2  # マスターノードのIPアドレス

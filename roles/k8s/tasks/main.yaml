@@ -10,9 +10,15 @@
       - ca-certificates
       - curl
       - socat
+    state: present
+
+- name: Install NFS client dependencies (autofs, nfs-common)
+  apt:
+    name:
       - autofs
       - nfs-common
     state: present
+  when: k8s_csi_plugin == 'nfs'
 
 - name: Ensure directory for apt keyrings exists
   file:

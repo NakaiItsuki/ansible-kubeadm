@@ -6,27 +6,32 @@
       #/misc  /etc/auto.misc
       /nfs    /etc/auto.nfs
     marker: ""
+  when: k8s_csi_plugin == 'nfs'
 
 - name: Ensure /etc/auto.nfs exists
   ansible.builtin.file:
     path: /etc/auto.nfs
     state: touch
+  when: k8s_csi_plugin == 'nfs'
 
 - name: Ensure k8s -rw,hard,intr control_plane_endpoint_ip:/export/nfs/ is present in /etc/auto.nfs
   ansible.builtin.lineinfile:
     path: /etc/auto.nfs
     line: "k8s -rw,hard,intr {{ control_plane_endpoint_ip }}:/export/nfs/"
     insertafter: EOF
+  when: k8s_csi_plugin == 'nfs'
 
 - name: Restart autofs service
   ansible.builtin.systemd:
     name: autofs
     state: restarted
+  when: k8s_csi_plugin == 'nfs'
 
 - name: Enable autofs service on boot
   ansible.builtin.systemd:
     name: autofs
     enabled: yes
+  when: k8s_csi_plugin == 'nfs'
 
 - name: Execute kubeadm join on master node
   command: "{{ hostvars[groups['k8s-master'][0]].additional_master_join_command }}"

@@ -4,12 +4,14 @@
     name:
       - nfs-kernel-server
     state: present
+  when: k8s_csi_plugin == 'nfs'
 
 - name: Ensure /export/nfs/ directory exists
   ansible.builtin.file:
     path: /export/nfs/
     state: directory
     mode: '0755'
+  when: k8s_csi_plugin == 'nfs'
 
 - name: Ensure /export/nfs/ <cluster network>(rw,sync,no_subtree_check,no_root_squash) is correctly written in /etc/exports
   ansible.builtin.lineinfile:
@@ -18,9 +20,11 @@
     regexp: '^/export/nfs'
     state: present
     insertafter: EOF
+  when: k8s_csi_plugin == 'nfs'
 
 - name: reload nfs setting
   shell: exportfs -ra
+  when: k8s_csi_plugin == 'nfs'
 
 - name: Initialize Kubernetes master node if not already initialized
   shell: >
@@ -81,11 +85,14 @@
       command: kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.28.1/manifests/calico.yaml
       when: k8s_cni_plugin == 'calico'
       register: cni_result
-  - name: Check result of CNI deployment
-    debug:
-      var: cni_result
+
+- name: Check result of CNI deployment
+  debug:
+    var: cni_result
 
 - name: Download and execute the Helm installation script
+  # Helm itself is generally useful, so this task remains unconditional.
+  # The NFS provisioner specific Helm commands will be conditional.
   shell: |
     curl -sSL https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
   args:
@@ -93,9 +100,12 @@
 
 - name: Add Helm repo for nfs-subdir-external-provisioner
   command: helm repo add nfs-subdir-external-provisioner https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner/
+  when: k8s_csi_plugin == 'nfs'
 
 - name: Update Helm repo
   command: helm repo update
+  when: k8s_csi_plugin == 'nfs'
 
 - name: Install nfs-subdir-external-provisioner
   command: helm install nfs-subdir-external-provisioner nfs-subdir-external-provisioner/nfs-subdir-external-provisioner --set nfs.server={{ control_plane_endpoint_ip }} --set nfs.path=/export/nfs/
+  when: k8s_csi_plugin == 'nfs'
