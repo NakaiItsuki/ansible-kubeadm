@@ -1,46 +1,54 @@
 ---
-- name: Add Golang backports PPA
-  apt_repository:
-    repo: ppa:longsleep/golang-backports
-    state: present
-    update_cache: yes
+- name: Check if cri-dockerd is already installed
+  stat:
+    path: /usr/local/bin/cri-dockerd
+  register: cri_dockerd_binary
 
-- name: Install Go, make, and gcc
-  apt:
-    name:
-      - golang-go
-      - make
-      - gcc
-    state: present
-    update_cache: yes
+- block:
+  - name: Add Golang backports PPA
+    apt_repository:
+      repo: ppa:longsleep/golang-backports
+      state: present
+      update_cache: yes
 
-- name: Clone cri-dockerd repository
-  git:
-    repo: "https://github.com/Mirantis/cri-dockerd.git"
-    dest: /tmp/cri-dockerd
-    version: master
+  - name: Install Go, make, and gcc
+    apt:
+      name:
+        - golang-go
+        - make
+        - gcc
+      state: present
+      update_cache: yes
 
-- name: Change directory to cri-dockerd and build cri-dockerd
-  command: make cri-dockerd
-  args:
-    chdir: /tmp/cri-dockerd
+  - name: Clone cri-dockerd repository
+    git:
+      repo: "https://github.com/Mirantis/cri-dockerd.git"
+      dest: /tmp/cri-dockerd
+      version: v0.3.14 # Use a specific version instead of master
 
-- name: Create /usr/local/bin directory if it doesn't exist
-  file:
-    path: /usr/local/bin
-    state: directory
-    owner: root
-    group: root
-    mode: '0755'
+  - name: Build cri-dockerd
+    command: make cri-dockerd
+    args:
+      chdir: /tmp/cri-dockerd
 
-- name: Install cri-dockerd to /usr/local/bin
-  copy:
-    src: /tmp/cri-dockerd/cri-dockerd
-    dest: /usr/local/bin/cri-dockerd
-    owner: root
-    group: root
-    mode: '0755'
-    remote_src: yes
+  - name: Install cri-dockerd to /usr/local/bin
+    copy:
+      src: /tmp/cri-dockerd/cri-dockerd
+      dest: /usr/local/bin/cri-dockerd
+      owner: root
+      group: root
+      mode: '0755'
+      remote_src: yes
+
+  - name: Install systemd service files for cri-dockerd
+    copy:
+      src: /tmp/cri-dockerd/packaging/systemd/cri-docker.service
+      dest: /etc/systemd/system/cri-docker.service
+      owner: root
+      group: root
+      mode: '0644'
+      remote_src: yes
+  when: not cri_dockerd_binary.stat.exists
 
 - name: Install systemd service files for cri-dockerd
   copy:
@@ -58,7 +66,8 @@
     replace: '\1/usr/local/bin/cri-dockerd'
 
 - name: Reload systemd to apply changes
-  command: systemctl daemon-reload
+  systemd:
+    daemon_reload: yes
 
 - name: Enable and start cri-docker.socket
   systemd:
