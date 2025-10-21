@@ -9,6 +9,10 @@
       - ca-certificates
       - curl
     state: present
+  register: apt_install_result
+  until: apt_install_result is succeeded
+  retries: 5
+  delay: 10
 
 - name: Create keyrings directory
   file:
@@ -40,3 +44,7 @@
       - docker-compose-plugin
     state: present
     update_cache: yes
+  register: apt_install_docker_result
+  until: apt_install_docker_result is succeeded
+  retries: 5
+  delay: 10
