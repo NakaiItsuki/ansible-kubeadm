@@ -1,22 +1,13 @@
 ---
-- name: Install Docker
+- name: Install containerd
   hosts: all
   become: true
-  serial: 1
   roles:
-  - { role: docker, tags: docker }
-
-- name: Install cri-dockerd
-  hosts: all
-  become: yes
-  serial: 1
-  roles:
-  - { role: cri-dockerd, tags: cri-dockerd }
+  - { role: containerd, tags: containerd }
 
 - name: Install Kubernetes packages
   hosts: all
   become: yes
-  serial: 1
   roles:
   - { role: k8s, tags: k8s }
 
@@ -24,20 +15,23 @@
 - name: Deploy master for kubeadm
   hosts: k8s-master
   become: true
-  serial: 1
   roles:
   - { role: master, tags: master }
 
 - name: Deploy additional master for kubeadm
   hosts: k8s-additional-masters
   become: true
-  serial: 1
   roles:
   - { role: additional-master, tags: additional-master }
 
 - name: Deploy workers for kubeadm
   hosts: k8s-workers
   become: true
-  serial: 1
   roles:
   - { role: worker, tags: worker }
+
+- name: Deploy metallb on master nodes
+  hosts: k8s-master
+  become: true
+  roles:
+  - { role: metallb, tags: metallb }

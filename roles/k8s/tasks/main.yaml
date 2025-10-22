@@ -26,15 +26,16 @@
     state: directory
     mode: '0755'
 
-- name: Check if Kubernetes apt keyring exists
-  stat:
-    path: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-  register: keyring_status
+- name: Download the Kubernetes apt keyring
+  ansible.builtin.get_url:
+    url: https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key
+    dest: /tmp/kubernetes-apt-keyring.key
+    mode: '0644'
 
-- name: Download and install Kubernetes apt keyring 
-  shell: | 
-    curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-  when: not keyring_status.stat.exists
+- name: De-armor the Kubernetes apt keyring
+  ansible.builtin.command: gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg /tmp/kubernetes-apt-keyring.key
+  args:
+    creates: /etc/apt/keyrings/kubernetes-apt-keyring.gpg # Only run if the final file doesn't exist
 
 - name: Add Kubernetes apt repository
   apt_repository:

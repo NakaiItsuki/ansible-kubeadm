@@ -20,11 +20,8 @@
     regexp: '^/export/nfs'
     state: present
     insertafter: EOF
-  when: k8s_csi_plugin == 'nfs'
-
-- name: reload nfs setting
-  shell: exportfs -ra
-  when: k8s_csi_plugin == 'nfs'
+  when: k8s_csi_plugin == 'nfs' and inventory_hostname == 'master-node'
+  notify: reload nfs-kernel-server
 
 - name: Initialize Kubernetes master node if not already initialized
   shell: >
@@ -32,7 +29,7 @@
     --kubernetes-version 1.30.2
     --pod-network-cidr={{ '192.168.0.0/16' if k8s_cni_plugin == 'calico' else '10.244.0.0/16' }}
     --control-plane-endpoint={{ control_plane_endpoint_ip }}
-    --cri-socket=unix:///var/run/cri-dockerd.sock
+    --cri-socket=unix:///run/containerd/containerd.sock
     --upload-certs
   args:
     creates: /etc/kubernetes/admin.conf
@@ -40,10 +37,13 @@
 - name: Create a new token for worker nodes
   command: kubeadm token create --print-join-command
   register: kubeadm_worker_join_command_result
+  retries: 5
+  delay: 15
+  until: kubeadm_worker_join_command_result.rc == 0
 
 - name: Set worker join command as a fact
   set_fact:
-    worker_join_command: "{{ kubeadm_worker_join_command_result.stdout }} --cri-socket=unix:///var/run/cri-dockerd.sock"
+    worker_join_command: "{{ kubeadm_worker_join_command_result.stdout }} --cri-socket=unix:///run/containerd/containerd.sock"
 
 - name: Create a new token for additional master nodes
   command: kubeadm token create --print-join-command
@@ -55,7 +55,7 @@
 
 - name: Set additional master join command as a fact
   set_fact:
-    additional_master_join_command: "{{ kubeadm_master_join_command_result.stdout }} --control-plane --certificate-key {{ kubeadm_certs_key_result.stdout_lines[-1] }} --cri-socket=unix:///var/run/cri-dockerd.sock"
+    additional_master_join_command: "{{ kubeadm_master_join_command_result.stdout }} --control-plane --certificate-key {{ kubeadm_certs_key_result.stdout_lines[-1] }} --cri-socket=unix:///run/containerd/containerd.sock"
 
 - name: Create .kube directory
   file:
@@ -80,19 +80,19 @@
       command: kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
       when: k8s_cni_plugin == 'flannel'
       register: cni_result
+      changed_when: "'created' in cni_result.stdout or 'configured' in cni_result.stdout"
 
     - name: Apply Calico network configuration
       command: kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.28.1/manifests/calico.yaml
       when: k8s_cni_plugin == 'calico'
       register: cni_result
+      changed_when: "'created' in cni_result.stdout or 'configured' in cni_result.stdout"
 
 - name: Check result of CNI deployment
   debug:
     var: cni_result
 
 - name: Download and execute the Helm installation script
-  # Helm itself is generally useful, so this task remains unconditional.
-  # The NFS provisioner specific Helm commands will be conditional.
   shell: |
     curl -sSL https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
   args:
